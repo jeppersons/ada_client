@@ -1,0 +1,144 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Ada Voice Chat – Prime</title>
+  <style>
+    body {
+      font-family: sans-serif;
+      margin: 20px;
+      background-color: #f9f9f9;
+    }
+    #chat-box {
+      margin-top: 20px;
+      padding: 15px;
+      background: #fff;
+      border-radius: 8px;
+      box-shadow: 0 0 10px #ccc;
+    }
+    img {
+      height: 150px;
+      border-radius: 12px;
+    }
+    button {
+      margin: 5px;
+      padding: 10px;
+      font-size: 1em;
+    }
+    #transcript, #response {
+      margin-top: 10px;
+      padding: 10px;
+      background: #e0e0e0;
+      border-radius: 5px;
+    }
+  </style>
+</head>
+<body>
+  <h1>Ada Voice Chat – Prime</h1>
+  <img src="ada.jpg" alt="Ada Lovelace" />
+  <h2>Ada Lovelace</h2>
+
+  <button onclick="startListening()">🎤 Speak</button>
+  <button onclick="stopListening()">🔇 Mute</button>
+  <button onclick="sendPrompt()">📨 Send</button>
+
+  <div id="transcript">Transcript:</div>
+  <div id="response">Response:</div>
+
+  <script>
+    const seekerName = getCookie("seeker_name") || "Steve";
+    const sessionId = getCookie("SID") || "session-Steve";
+    let promptToSend = "";
+
+    const recognition = new (window.SpeechRecognition || window.webkitSpeechRecognition)();
+    recognition.lang = 'en-US';
+    recognition.interimResults = false;
+
+    speechSynthesis.onvoiceschanged = () => {
+    console.log("🔊 Voices loaded:", speechSynthesis.getVoices().map(v => v.name));
+    };
+
+    recognition.onresult = function(event) {
+      const transcript = event.results[0][0].transcript;
+      document.getElementById("transcript").textContent = "Transcript: " + transcript;
+      promptToSend = transcript;
+      sendPrompt();
+    };
+
+    function startListening() {
+      recognition.start();
+    }
+
+    function stopListening() {
+      recognition.stop();
+    }
+
+    function sendPrompt() {
+      if (!promptToSend) return;
+
+      const payload = {
+        name: seekerName,
+        session_id: sessionId,
+        prompt: promptToSend
+      };
+
+      console.log("Sending prompt:", payload);
+
+      fetch("https://9ea2-2605-a601-a9c3-a700-a5fa-88bc-466e-6c2c.ngrok-free.app/chat", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload)
+      })
+      .then(res => res.json())
+      .then(data => {
+        console.log("Ada replied:", data.reply);
+        document.getElementById("response").textContent = "Response: " + data.reply;
+        speakResponse(data.reply);
+      })
+      .catch(err => {
+        console.error("Fetch error:", err);
+        document.getElementById("response").textContent = "Error: " + err.message;
+      });
+    }
+
+    function speakResponse(text) {
+      const utterance = new SpeechSynthesisUtterance(text);
+      const libby = speechSynthesis.getVoices().find(v => v.name === "Microsoft Libby Online (Natural) - English (United Kingdom)");
+      utterance.voice = libby || speechSynthesis.getVoices()[0];
+      console.log("🗣️ Using voice:", utterance.voice.name);
+
+      speechSynthesis.speak(utterance);
+    }
+
+    function getCookie(name) {
+      const value = `; ${document.cookie}`;
+      const parts = value.split(`; ${name}=`);
+      if (parts.length === 2) return parts.pop().split(';').shift();
+    }
+
+    const initPayload = {
+      session_id: sessionId,
+      seeker_name: seekerName,
+      character_prompt: "You are Ada Lovelace, the world’s first computer programmer and a brilliant, inquisitive tutor with a passion for logic, mathematics, and discovery.",
+      voice_id: "shimmer",
+      memory_context: ""
+    };
+
+    console.log("📦 Sending INIT payload:", initPayload);
+
+    fetch("https://9ea2-2605-a601-a9c3-a700-a5fa-88bc-466e-6c2c.ngrok-free.app/initialize_chat", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(initPayload)
+    })
+    .then(res => res.json())
+    .then(data => {
+      console.log("✅ Initialization Response:", data);
+    })
+    .catch(err => {
+      console.error("🚨 INIT FAILED:", err.message);
+    });
+
+  </script>
+</body>
+</html>
