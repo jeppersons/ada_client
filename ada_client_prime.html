@@ -1,0 +1,128 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Ada Voice & Text Client - Prime Merged</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 0;
+            padding: 20px;
+            background-color: #f9f9f9;
+        }
+        #container {
+            max-width: 600px;
+            margin: 0 auto;
+            background-color: #ffffff;
+            border-radius: 10px;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+            padding: 20px;
+        }
+        #image {
+            text-align: center;
+        }
+        #image img {
+            width: 150px;
+            border-radius: 50%;
+        }
+        button {
+            margin: 5px;
+        }
+        #response, #transcript {
+            border: 1px solid #ccc;
+            padding: 10px;
+            margin-top: 10px;
+            background-color: #f1f1f1;
+        }
+    </style>
+    <script>
+        let recognition;
+        let isRecording = false;
+
+        function toggleMic() {
+            if (!isRecording) {
+                recognition = new(window.SpeechRecognition || window.webkitSpeechRecognition)();
+                recognition.lang = 'en-US';
+                recognition.continuous = false;
+
+                recognition.onstart = () => {
+                    document.getElementById('status').innerText = "🎙️ Listening...";
+                };
+
+                recognition.onresult = (event) => {
+                    const transcript = event.results[0][0].transcript;
+                    document.getElementById('transcript').innerText = transcript;
+                    document.getElementById('status').innerText = "Voice Input Complete ✅";
+                };
+
+                recognition.onerror = (event) => {
+                    console.error("Voice Recognition Error:", event.error);
+                    document.getElementById('status').innerText = "Voice Error ❌";
+                };
+
+                recognition.start();
+                isRecording = true;
+            } else {
+                recognition.stop();
+                isRecording = false;
+                document.getElementById('status').innerText = "Stopped Listening ❌";
+            }
+        }
+
+        async function sendMessage() {
+            const message = document.getElementById('transcript').innerText;
+            if (!message) return;
+
+            const payload = {
+                name: "Steve",
+                prompt: "Ada Lovelace",
+                session_id: "session-Steve-Ada Lovelace",
+                message: message
+            };
+
+            console.log("➡️ Sending Payload:", payload);
+
+            try {
+                const NGROK_URL = "https://f024-2605-a601-a9c9-e800-dddf-cd74-4a9f-e44c.ngrok-free.app";
+                const response = await fetch(`${NGROK_URL}/chat`, {
+
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify(payload)
+                });
+
+                console.log("🛬 Server Response (Raw):", response);
+
+                const data = await response.json();
+                console.log("📦 Parsed Response from server:", data);
+
+                if (data && data.message) {
+                    document.getElementById('response').innerText = data.message;
+                    console.log("✅ Reply Found:", data.message);
+                } else {
+                    document.getElementById('response').innerText = "No message received from server.";
+                    console.warn("❌ No reply found in response.");
+                }
+            } catch (error) {
+                console.error("🚨 Fetch Error:", error);
+                document.getElementById('response').innerText = "Error communicating with Ada.";
+            }
+        }
+    </script>
+</head>
+<body>
+    <div id="container">
+        <div id="image">
+            <img src="./ada.jpg" alt="Ada Lovelace">
+        </div>
+        <h2>Ada Lovelace</h2>
+        <button onclick="toggleMic()">🎙️ Speak</button>
+        <button onclick="sendMessage()">📝 Send</button>
+        <p id="status">Mic is off ❌</p>
+        <div id="transcript" placeholder="Transcript:">Transcript will appear here...</div>
+        <div id="response" placeholder="Response:">Response will appear here...</div>
+    </div>
+</body>
+</html>
